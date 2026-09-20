@@ -138,3 +138,92 @@ deschidere — inchide si redeschide dashboard-ul ca sa le reimprospatezi.
 - Procentul bateriei din dashboard e citit la deschidere.
 - `navigator.wakeLock` e incercat, dar WKWebView nu il onoreaza mereu — de asta
   exista recomandarea cu Auto-Lock de mai sus.
+
+---
+
+# Wallpaper de lock screen (`wallpaper.js`)
+
+Informatia direct pe fundalul de lock screen, ca sa o vezi cand ridici telefonul,
+fara niciun tap. Scriptable deseneaza imaginea, Shortcuts o pune ca wallpaper, iar
+o automatizare pe ora fixa trage de tot lantul.
+
+E un **instantaneu**, nu ceva live: de aceea afiseaza ore absolute ("URMEAZA 16:00"),
+niciodata countdown-uri, care ar fi gresite intre doua actualizari.
+
+## Ce deseneaza
+
+- **URMEAZA** + eticheta pasului curent din rutina + ora lui
+- **Banda zilei**: 00:00 → 24:00, cu cate un punct pentru fiecare pas al rutinei
+  (aprins daca a trecut), umplut pana in momentul generarii, cu un marcaj alb
+  pentru "acum"
+- **De facut**: primele 4 task-uri neterminate, cele depasite marcate portocaliu
+- **Subsol**: vremea si ora la care s-a generat imaginea
+
+Totul e desenat doar in banda `CONFIG.band` — sub ceasul si widget-urile de
+sistem, si suficient de sus cat sa nu fie acoperit de notificari, care se
+stivuiesc de jos in sus.
+
+## Setup
+
+**1. Scriptul**
+
+Scriptable → `+` → lipeste `wallpaper.js` → redenumeste-l `Wallpaper`.
+Ruleaza-l o data din Scriptable: iti arata o previzualizare (QuickLook) ca sa
+poti regla `CONFIG.band` inainte de a-l lega de Shortcuts.
+
+**2. Shortcut-ul**
+
+Shortcuts → `+` → numeste-l `Update Wallpaper`:
+
+1. Actiunea **Run Script** (Scriptable) → alege `Wallpaper`
+2. Actiunea **Set Wallpaper Photo** → input-ul e rezultatul scriptului
+3. In optiunile acestei actiuni alege **Lock Screen** (nu si Home Screen —
+   acolo oricum acopera grila de aplicatii)
+4. **Dezactiveaza `Show Preview`** in aceeasi actiune
+
+Pasul 4 nu e optional: cu el pornit, fiecare rulare iti cere confirmare si
+automatizarea devine inutila.
+
+**3. Automatizarile**
+
+Shortcuts → tab-ul **Automation** → `+` → **Time of Day** → ora dorita →
+**Daily** → **Run Immediately** (si `Notify When Run` oprit) → ruleaza
+`Update Wallpaper`.
+
+Atentie: automatizarile de tip Time of Day se repeta doar **zilnic, saptamanal
+sau lunar** — nu exista optiune de "din ora in ora". Pentru mai multe
+actualizari pe zi, creezi cate o automatizare pentru fiecare moment. In practica
+4-5 sunt destule, fixate pe momentele care conteaza:
+
+| Ora | De ce |
+|---|---|
+| 03:55 | inainte de trezire |
+| 06:40 | inainte de plecare |
+| 15:00 | inainte de pauza |
+| 16:00 | final de tura |
+| 22:00 | planul de maine |
+
+Nu doar ora poate fi declansator: **ajungi la o locatie**, **te conectezi la un
+Wi-Fi anume**, **pui telefonul la incarcat**, **se schimba Focus-ul** sau
+**atingi un tag NFC** functioneaza la fel de bine, si sunt adesea mai potrivite
+decat o ora fixa.
+
+## Daca nu merge
+
+- **Cere confirmare la fiecare rulare** → `Show Preview` a ramas pornit in
+  actiunea Set Wallpaper Photo.
+- **Actiunea refuza imaginea primita direct** → pune intre cele doua actiuni un
+  **Save to Photo Album**, apoi hraneste Set Wallpaper Photo cu poza salvata.
+- **Wallpaper-ul apare estompat** → lock screen-ul are optiunea proprie de blur.
+  Apasa lung pe lock screen → Customize → si opreste efectul.
+- **Textul e acoperit de notificari** → coboara `band.bottom` sau tine
+  notificarile in Notification Summary.
+- **Nu se schimba nimic la ora stabilita** → verifica in automatizare ca e pe
+  **Run Immediately**, nu pe "Run After Confirmation".
+
+## Limitari
+
+- Scriptable nu poate seta el wallpaper-ul; Shortcuts e obligatoriu in lant.
+- Nu exista automatizare mai deasa de o data pe zi per automatizare.
+- `routine` e duplicat intre `dashboard.js` si `wallpaper.js` — Scriptable tine
+  scripturile ca fisiere separate. Daca schimbi orele, schimba-le in ambele.
