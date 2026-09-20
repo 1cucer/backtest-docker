@@ -21,13 +21,12 @@ const CONFIG = {
 
   // Tine-le la fel cu cele din dashboard.js (sunt fisiere separate in
   // Scriptable, nu pot partaja configuratia fara un al treilea script).
-  routine: [
-    { at: "04:00", label: "WAKE UP" },
-    { at: "06:00", label: "PLECARE" },
-    { at: "06:45", label: "START TURA" },
-    { at: "15:05", label: "PAUZA" },
-    { at: "16:00", label: "FINAL TURA" },
-    { at: "00:00", label: "SOMN" },
+  segments: [
+    { from: "06:30", to: "15:05", label: "TIMP LIBER", kind: "free"  },
+    { from: "15:05", to: "20:25", label: "TURA I",     kind: "work"  },
+    { from: "20:25", to: "21:00", label: "PAUZA",      kind: "break" },
+    { from: "21:00", to: "23:25", label: "TURA II",    kind: "work"  },
+    { from: "23:25", to: "06:30", label: "ODIHNA",     kind: "off"   },
   ],
 
   reminderLists: [],
@@ -116,7 +115,8 @@ function buildWallpaper(data) {
 
   // --- A. pasul urmator ---
   if (data.routine) {
-    drawText(ctx, "URMEAZA", M, y, 26 * S, "semibold", DIM, CW * 0.6, "left");
+    drawText(ctx, "ACUM \u00B7 " + data.routine.current, M, y, 26 * S, "semibold",
+             DIM, CW * 0.62, "left");
     drawText(ctx, data.routine.nextTime, M + CW * 0.6, y, 30 * S, "semibold",
              CONFIG.accent, CW * 0.4, "right");
     y += Math.round(46 * S);
@@ -124,31 +124,41 @@ function buildWallpaper(data) {
     y += Math.round(128 * S);
   }
 
-  // --- B. banda zilei, cu punct pentru fiecare pas si marcaj pentru "acum" ---
+  // --- B. banda zilei: fiecare interval desenat ca bloc, plus marcaj "acum" ---
   const now = new Date(data.now);
   const nowMin = now.getHours() * 60 + now.getMinutes();
-  const trackH = Math.round(6 * S);
+  const trackH = Math.round(14 * S);
   const trackY = y;
+  const KIND_COLOR = { work: CONFIG.accent, break: "#6E6E73", free: "#2C2C2E", off: "#161618" };
 
-  roundedRect(ctx, M, trackY, CW, trackH, trackH / 2, "#2C2C2E");
-  roundedRect(ctx, M, trackY, Math.max(trackH, CW * (nowMin / 1440)), trackH,
-              trackH / 2, CONFIG.accent);
+  roundedRect(ctx, M, trackY, CW, trackH, trackH / 2, "#161618");
 
-  for (const step of CONFIG.routine) {
-    const mins = minutesOf(step.at);
-    const cx = M + CW * (mins / 1440);
-    const past = mins <= nowMin;
-    dot(ctx, cx, trackY + trackH / 2, 11 * S, "#000000");
-    dot(ctx, cx, trackY + trackH / 2, 8 * S, past ? CONFIG.accent : "#48484A");
+  for (const sg of CONFIG.segments) {
+    const f = minutesOf(sg.from);
+    const t = minutesOf(sg.to);
+    const col = KIND_COLOR[sg.kind] || "#2C2C2E";
+    // Intervalul care trece peste miezul noptii se deseneaza in doua bucati.
+    const spans = f <= t ? [[f, t]] : [[f, 1440], [0, t]];
+    for (const [a0, b0] of spans) {
+      const x = M + CW * (a0 / 1440);
+      const w = Math.max(2 * S, CW * ((b0 - a0) / 1440));
+      roundedRect(ctx, x, trackY, w, trackH, trackH / 2, col);
+    }
   }
 
   // marcajul "acum"
   const nx = M + CW * (nowMin / 1440);
-  roundedRect(ctx, nx - 3 * S, trackY - 13 * S, 6 * S, trackH + 26 * S, 3 * S, FG);
+  roundedRect(ctx, nx - 4 * S, trackY - 11 * S, 8 * S, trackH + 22 * S, 4 * S, "#000000");
+  roundedRect(ctx, nx - 2.5 * S, trackY - 9 * S, 5 * S, trackH + 18 * S, 2.5 * S, FG);
 
-  y += Math.round(34 * S);
-  drawText(ctx, "00:00", M, y, 22 * S, "regular", DIM, CW * 0.5, "left");
-  drawText(ctx, "24:00", M + CW * 0.5, y, 22 * S, "regular", DIM, CW * 0.5, "right");
+  y += Math.round(42 * S);
+  const shift = CONFIG.segments.filter((sg) => sg.kind === "work");
+  const spanLabel = shift.length
+    ? shift[0].from + " \u2013 " + shift[shift.length - 1].to
+    : "00:00 \u2013 24:00";
+  drawText(ctx, "00:00", M, y, 22 * S, "regular", DIM, CW * 0.3, "left");
+  drawText(ctx, spanLabel, M + CW * 0.3, y, 22 * S, "regular", SOFT, CW * 0.4, "center");
+  drawText(ctx, "24:00", M + CW * 0.7, y, 22 * S, "regular", DIM, CW * 0.3, "right");
   y += Math.round(64 * S);
 
   // --- C. lista de task-uri ---
@@ -185,12 +195,20 @@ function buildWallpaper(data) {
 // --- date -----------------------------------------------------------------
 
 function routineState(now) {
-  if (!CONFIG.routine.length) return null;
-  const sorted = CONFIG.routine.slice().sort((a, b) => minutesOf(a.at) - minutesOf(b.at));
+  const segs = CONFIG.segments;
+  if (!segs || !segs.length) return null;
   const cur = now.getHours() * 60 + now.getMinutes();
-  let i = sorted.findIndex((r) => minutesOf(r.at) > cur);
+  let i = segs.findIndex((sg) => {
+    const f = minutesOf(sg.from);
+    const t = minutesOf(sg.to);
+    return f <= t ? cur >= f && cur < t : cur >= f || cur < t;
+  });
   if (i === -1) i = 0;
-  return { next: sorted[i].label, nextTime: sorted[i].at };
+  return {
+    current: segs[i].label,
+    next: segs[(i + 1) % segs.length].label,
+    nextTime: segs[i].to,
+  };
 }
 
 async function getReminders() {

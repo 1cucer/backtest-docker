@@ -19,14 +19,14 @@ const CONFIG = {
   accent: "#FF4A17",
   locale: "ro-RO",
 
-  // ROUTINE I - orele tale + o eticheta scurta pentru fiecare
-  routine: [
-    { at: "04:00", label: "WAKE UP" },
-    { at: "06:00", label: "PLECARE" },
-    { at: "06:45", label: "START TURA" },
-    { at: "15:05", label: "PAUZA" },
-    { at: "16:00", label: "FINAL TURA" },
-    { at: "00:00", label: "SOMN" },
+  // Ziua ca succesiune de INTERVALE, nu de momente. Ultimul se inchide peste
+  // miezul noptii in primul. kind: "free" | "work" | "break" | "off"
+  segments: [
+    { from: "06:30", to: "15:05", label: "TIMP LIBER", kind: "free"  },
+    { from: "15:05", to: "20:25", label: "TURA I",     kind: "work"  },
+    { from: "20:25", to: "21:00", label: "PAUZA",      kind: "break" },
+    { from: "21:00", to: "23:25", label: "TURA II",    kind: "work"  },
+    { from: "23:25", to: "06:30", label: "ODIHNA",     kind: "off"   },
   ],
 
   // Lasa gol [] ca sa iei tot din Reminders, sau pune numele listelor:
@@ -49,37 +49,54 @@ function toMinutes(hhmm) {
   return h * 60 + m;
 }
 
-function atTime(base, hhmm, dayOffset) {
+// Cea mai apropiata ocurenta a lui HH:MM strict dupa `now`.
+function nextAt(now, hhmm) {
   const [h, m] = hhmm.split(":").map(Number);
-  const d = new Date(base);
-  d.setDate(d.getDate() + (dayOffset || 0));
+  const d = new Date(now);
   d.setHours(h, m, 0, 0);
+  if (d <= now) d.setDate(d.getDate() + 1);
   return d;
 }
 
-// Returneaza pasul urmator din rutina + pasul anterior (pentru bara de progres)
+// Cea mai recenta ocurenta a lui HH:MM la sau inainte de `now`.
+function prevAt(now, hhmm) {
+  const [h, m] = hhmm.split(":").map(Number);
+  const d = new Date(now);
+  d.setHours(h, m, 0, 0);
+  if (d > now) d.setDate(d.getDate() - 1);
+  return d;
+}
+
+// In ce interval suntem acum, cand se termina si ce urmeaza.
+// Countdown-ul tinteste mereu sfarsitul intervalului curent, care e totodata
+// inceputul celui urmator: in tura tinteste pauza, in pauza tinteste tura II.
 function routineState(now) {
-  if (!CONFIG.routine.length) return null;
-  const sorted = CONFIG.routine.slice().sort((a, b) => toMinutes(a.at) - toMinutes(b.at));
+  const segs = CONFIG.segments;
+  if (!segs || !segs.length) return null;
+
   const cur = now.getHours() * 60 + now.getMinutes() + now.getSeconds() / 60;
 
-  let i = sorted.findIndex((r) => toMinutes(r.at) > cur);
-  const wrapped = i === -1;
-  if (wrapped) i = 0;
+  let i = segs.findIndex((sg) => {
+    const f = toMinutes(sg.from);
+    const t = toMinutes(sg.to);
+    // Intervalul care trece peste miezul noptii (from > to) e "sau/sau".
+    return f <= t ? cur >= f && cur < t : cur >= f || cur < t;
+  });
+  if (i === -1) i = 0; // gauri in configuratie: cadem pe primul interval
 
-  const next = sorted[i];
-  const prev = sorted[(i - 1 + sorted.length) % sorted.length];
+  const seg = segs[i];
+  const nxt = segs[(i + 1) % segs.length];
 
-  const nextAt = atTime(now, next.at, wrapped || toMinutes(next.at) <= cur ? 1 : 0);
-  const prevAt = atTime(now, prev.at, toMinutes(prev.at) > cur ? -1 : 0);
-
+  // Fiind in interval, sfarsitul lui e mereu in viitor si inceputul in trecut,
+  // asa ca ocurentele apropiate sunt automat corecte si peste miezul noptii.
   return {
-    next: next.label,
-    nextTime: next.at,
-    nextAt: nextAt.getTime(),
-    prev: prev.label,
-    prevTime: prev.at,
-    prevAt: prevAt.getTime(),
+    current: seg.label,
+    kind: seg.kind,
+    startAt: prevAt(now, seg.from).getTime(),
+    next: nxt.label,
+    nextKind: nxt.kind,
+    nextTime: seg.to,
+    nextAt: nextAt(now, seg.to).getTime(),
   };
 }
 
@@ -208,15 +225,6 @@ async function collect() {
 
 // --- WIDGET ----------------------------------------------------------------
 
-function fmtCountdown(ms) {
-  if (ms < 0) ms = 0;
-  const total = Math.floor(ms / 1000);
-  const h = Math.floor(total / 3600);
-  const m = Math.floor((total % 3600) / 60);
-  if (h > 0) return h + "h " + String(m).padStart(2, "0") + "m";
-  const s = total % 60;
-  return m + "m " + String(s).padStart(2, "0") + "s";
-}
 
 function buildWidget(data) {
   const accent = new Color(CONFIG.accent);
@@ -232,7 +240,7 @@ function buildWidget(data) {
   if (data.routine) {
     const head = w.addStack();
     head.centerAlignContent();
-    const tag = head.addText("URMATOR");
+    const tag = head.addText("ACUM \u00B7 " + data.routine.current);
     tag.font = Font.semiboldSystemFont(10);
     tag.textColor = dim;
     head.addSpacer();
@@ -398,7 +406,7 @@ function buildHTML(data) {
   <div id="clock">--:--<span class="sec">--</span></div>
   <div id="date"></div>
   <div style="margin-top:22px">
-    <div class="lbl">Urmatorul pas</div>
+    <div class="lbl">Urmeaza</div>
     <div class="next-label" id="nextLabel">-</div>
     <div class="next-cd" id="nextCd">-</div>
     <div class="bar"><i id="barFill"></i></div>
@@ -445,12 +453,12 @@ function tick() {
 
   var r = DATA.routine;
   if (r) {
-    var target = r.nextAt, prev = r.prevAt;
+    var target = r.nextAt, prev = r.startAt;
     // daca am depasit tinta, mutam fereastra inainte cu 24h (pagina poate sta ore intregi)
     while (d.getTime() > target) { target += 86400000; prev += 86400000; }
     document.getElementById("nextLabel").textContent = r.next;
     document.getElementById("nextCd").textContent = "in " + fmtCd(target - d.getTime());
-    document.getElementById("barA").textContent = r.prevTime + "  " + r.prev;
+    document.getElementById("barA").textContent = r.current;
     document.getElementById("barB").textContent = r.nextTime;
     var span = target - prev;
     var pct = span > 0 ? ((d.getTime() - prev) / span) * 100 : 0;

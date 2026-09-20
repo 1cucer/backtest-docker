@@ -1,5 +1,51 @@
 # Phone Dashboard
 
+## Programul configurat
+
+| Interval | Ce e | Durata |
+|---|---|---|
+| 06:30 - 15:05 | TIMP LIBER | 8h 35m |
+| 15:05 - 20:25 | TURA I | 5h 20m |
+| 20:25 - 21:00 | PAUZA | 35m |
+| 21:00 - 23:25 | TURA II | 2h 25m |
+| 23:25 - 06:30 | ODIHNA | 7h 05m |
+
+Ziua e modelata ca **intervale**, nu ca momente izolate (`CONFIG.segments`).
+De aceea countdown-ul tinteste mereu sfarsitul intervalului in care esti, care e
+totodata inceputul celui urmator: in tura numara pana la pauza, in pauza numara
+pana la TURA II. Ultimul interval se inchide peste miezul noptii in primul.
+
+Schimbi programul intr-un singur loc per fisier, in `CONFIG.segments`.
+
+---
+
+## Timer nativ de tura (Dynamic Island)
+
+Widget-ul si dashboard-ul arata countdown-ul, dar daca vrei numaratoarea si in
+**Dynamic Island / pe lock screen fara sa deschizi nimic**, foloseste timerul
+nativ din Clock, pornit automat de Shortcuts. E singura cale catre o Live
+Activity fara aplicatie nativa proprie.
+
+Pentru fiecare, in Shortcuts -> Automation -> `+` -> **Time of Day** -> **Daily**
+-> **Run Immediately** (cu `Notify When Run` oprit), o singura actiune
+**Start Timer**:
+
+| Ora | Durata | Numara pana la |
+|---|---|---|
+| 15:05 | 5h 20m | pauza, 20:25 |
+| 20:25 | 35m | final de pauza, 21:00 |
+| 21:00 | 2h 25m | final de tura, 23:25 |
+
+Timerul de la 20:25 e cel mai util: iti suna cand se termina pauza.
+
+Note:
+- iOS 17+ suporta mai multe timere simultan, deci cele trei nu se calca.
+- Fiecare timer **suna** la final. Daca nu vrei sunet la 15:05 si 21:00, pastreaza
+  doar automatizarea de la 20:25 si lasa-te pe widget pentru restul.
+- Aceleasi automatizari pot porni in acelasi timp si un **Focus**, ca telefonul
+  sa taca in tura.
+
+
 Home screen-ul telefonului transformat in tablou de informatii: un widget compact
 pe grila + un **dashboard full-screen care se misca in timp real** (ceas cu
 secunde, countdown pana la urmatorul pas din rutina, vreme, reminders, calendar).
