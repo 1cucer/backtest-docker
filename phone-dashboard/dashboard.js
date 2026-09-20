@@ -246,9 +246,23 @@ function buildWidget(data) {
     label.textColor = Color.white();
     label.lineLimit = 1;
 
-    const cd = w.addText("in " + fmtCountdown(data.routine.nextAt - data.now));
-    cd.font = Font.mediumRoundedSystemFont(family === "small" ? 12 : 14);
+    // Countdown care curge singur, fara refresh: WidgetKit anima acest text.
+    const cdRow = w.addStack();
+    cdRow.centerAlignContent();
+    const cdSize = family === "small" ? 12 : 14;
+    const cdPre = cdRow.addText("in ");
+    cdPre.font = Font.mediumRoundedSystemFont(cdSize);
+    cdPre.textColor = accent;
+    const cd = cdRow.addDate(new Date(data.routine.nextAt));
+    cd.applyTimerStyle();
+    cd.font = Font.mediumRoundedSystemFont(cdSize);
     cd.textColor = accent;
+    cdRow.addSpacer();
+
+    // Cere un refresh fix la ora pasului urmator, ca widget-ul sa treaca la
+    // pasul urmator exact atunci, nu la urmatorul ciclu de refresh.
+    const flip = new Date(data.routine.nextAt + 5000);
+    if (flip < w.refreshAfterDate) w.refreshAfterDate = flip;
   }
 
   if (family !== "small" && data.reminders.items.length) {

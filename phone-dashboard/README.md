@@ -25,6 +25,12 @@ Ce se actualizeaza cu adevarat continuu pe iOS:
 | StandBy mode (iOS 17+, pe incarcare, landscape, blocat) | tot widget-uri, dar mereu vizibile | gratis, zero setup |
 | Live Activities / Dynamic Island | push, aproape instant | necesita o aplicatie nativa |
 
+**Exceptia:** countdown-urile si datele relative *se anima singure* in widget,
+fara refresh — WidgetKit le deseneaza ca text animat (`WidgetDate` +
+`applyTimerStyle()` in Scriptable). De asta countdown-ul pana la urmatorul pas
+din rutina curge secunda cu secunda si pe grila. Doar **datele** raman blocate
+pana la refresh-ul de sistem: reminder-ele, vremea si bateria.
+
 De aceea scriptul are doua moduri: widget pentru grila (privire scurta) si
 dashboard live pentru cand proptesti telefonul si te uiti la el.
 
