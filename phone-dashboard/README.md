@@ -273,3 +273,68 @@ decat o ora fixa.
 - Nu exista automatizare mai deasa de o data pe zi per automatizare.
 - `routine` e duplicat intre `dashboard.js` si `wallpaper.js` — Scriptable tine
   scripturile ca fisiere separate. Daca schimbi orele, schimba-le in ambele.
+
+---
+
+# Focus (`focus.js`)
+
+Un singur widget, in engleza, care **isi schimba continutul dupa intervalul in
+care esti**. Ideea de baza: in tura aproape nimic nu e valoros in timp real —
+vremea, stirile, bursa sunt zgomot, nu poti face nimic cu ele la 18:00 in hala.
+Asa ca widget-ul arata doar ce e actionabil acum.
+
+| Interval | Ce arata |
+|---|---|
+| **Tura** | cat mai e pana la pauza, progresul, orele lucrate, cat ai castigat |
+| **Pauza** | cat mai e pana te intorci |
+| **Liber** | cat mai e pana la tura, si primul task pe care il poti face acum |
+| **Odihna** | cat mai e pana te trezesti, si nimic altceva |
+
+Ultimul rand e intentionat gol: la 3 dimineata nu exista nimic actionabil, iar
+un widget care oricum arata ceva te invata sa il ignori.
+
+## Reguli de design
+
+Patru elemente, mereu in aceeasi ordine, niciodata mai multe:
+
+1. **Eyebrow** — unde esti, si unde te indrepti (10pt)
+2. **Hero** — un singur numar mare, care curge fara refresh (46pt)
+3. **Bara** — progresul prin intervalul curent (3pt)
+4. **Rail** — cel mult trei fapte care sustin, niciodata patru (12pt)
+
+O singura scara tipografica (10 / 12 / 30 / 46), un singur ritm de spatiere
+(multipli de 4), si accentul portocaliu folosit **o singura data** per widget —
+pe bara si pe ora tinta. Numarul mare ramane alb, ca sa nu concureze.
+
+## Setup
+
+1. Scriptable -> `+` -> lipeste `focus.js` -> redenumeste-l `Focus`
+2. Adauga widget-ul pe home screen, `Script` -> `Focus`
+3. `When Interacting` -> **Run Script**
+
+Merge pe toate marimile: small, medium, large, plus lock screen
+(`accessoryRectangular`, `accessoryCircular`, `accessoryInline`).
+
+## Castigul in timp real
+
+Singurul numar care chiar creste sub ochii tai in timpul turei. E **oprit
+implicit** — pune-ti salariul brut pe ora ca sa-l pornesti:
+
+```js
+hourlyRate: 14.5,   // null il ascunde
+currency: "€",
+```
+
+Se calculeaza din minutele petrecute in intervalele de tip `work` de azi, deci
+nu numara pauza. E o estimare bruta, nu un pontaj: nu stie de ore suplimentare,
+sporuri sau retineri.
+
+## Limitari
+
+- Countdown-ul curge singur, dar **datele din rail** (task-uri, ore lucrate,
+  castig) se reimprospateaza doar cand iOS reinnoieste widget-ul.
+- `refreshAfterDate` e fixat pe sfarsitul intervalului curent, deci widget-ul
+  comuta pe intervalul urmator exact atunci — daca iOS ii da voie.
+- Latimea barei vine dintr-un tabel de latimi pe model de telefon. Daca al tau
+  nu e in `WIDTHS`, se estimeaza; cativa puncti in plus sau in minus nu se vad.
+- Pe lock screen iOS forteaza un mod monocrom, deci accentul portocaliu nu apare.
