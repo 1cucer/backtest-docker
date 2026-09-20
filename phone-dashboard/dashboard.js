@@ -32,7 +32,7 @@ const CONFIG = {
   // Lasa gol [] ca sa iei tot din Reminders, sau pune numele listelor:
   // reminderLists: ["ROUTINE I", "Inbox"],
   reminderLists: [],
-  maxReminders: 7,
+  maxReminders: 8,
 
   // null, null => foloseste GPS-ul. Pune coordonate fixe daca vrei sa eviti
   // promptul de locatie (si sa mearga widget-ul in fundal).
@@ -250,9 +250,10 @@ function buildWidget(data) {
     const cdRow = w.addStack();
     cdRow.centerAlignContent();
     const cdSize = family === "small" ? 12 : 14;
-    const cdPre = cdRow.addText("in ");
+    const cdPre = cdRow.addText("in");
     cdPre.font = Font.mediumRoundedSystemFont(cdSize);
     cdPre.textColor = accent;
+    cdRow.addSpacer(5);
     const cd = cdRow.addDate(new Date(data.routine.nextAt));
     cd.applyTimerStyle();
     cd.font = Font.mediumRoundedSystemFont(cdSize);
@@ -273,13 +274,14 @@ function buildWidget(data) {
     line.backgroundColor = new Color("#2C2C2E");
     w.addSpacer(8);
 
-    const count = family === "large" ? 5 : 3;
+    const count = family === "large" ? 8 : 3;
     for (const r of data.reminders.items.slice(0, count)) {
       const row = w.addStack();
       row.centerAlignContent();
-      const dot = row.addText("○ ");
+      const dot = row.addText("○");
       dot.font = Font.systemFont(11);
       dot.textColor = r.overdue ? accent : dim;
+      row.addSpacer(6);
       const t = row.addText(r.title);
       t.font = Font.systemFont(12);
       t.textColor = new Color("#E5E5EA");
@@ -300,7 +302,8 @@ function buildWidget(data) {
   }
   foot.addSpacer();
   const meta = foot.addText(
-    data.reminders.total + " task" + (data.charging ? " ⚡" : "") + "  " + data.battery + "%"
+    (family === "small" ? "" : data.reminders.total + " task   ") +
+    (data.charging ? "⚡ " : "") + data.battery + "%"
   );
   meta.font = Font.systemFont(11);
   meta.textColor = dim;
