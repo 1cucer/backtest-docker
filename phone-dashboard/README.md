@@ -1,5 +1,10 @@
 # Phone Dashboard
 
+> **Update:** am trecut pe varianta 100% nativa (fara Scriptable) ca
+> drum principal — vezi [`NATIVE.md`](./NATIVE.md). Scripturile de mai jos
+> raman functionale, ca alternativa daca vrei control vizual total.
+
+
 ## Programul configurat
 
 | Interval | Ce e | Durata |
